@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Certificate Generator</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f8f8f8;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .form-sertifikat{
+        margin: 10px 20px;
+    }
+    .certificate-container {
+      width: 900px;
+      height: 600px;
+      padding: 5px;
+      border: 5px solid #fcb14a;
+      background: url('bg.png') no-repeat center;
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+      position: relative;
+      text-align: center;
+    }
+    .certificate-container h1 {
+      font-size: 2.5em;
+      color: #29377e;
+      margin: 20px 0px 0px;
+    }
+    .certificate-container h2 {
+      font-size: 1.5em;
+      color: #29377e;
+      margin: 10px 0 20px;
+    }
+    .certificate-container h3 {
+        font-size: 1em;
+        color: #29377e;
+        margin: 0px;
+      }
+    .certificate-container p {
+      font-size: 1.1em;
+      line-height: 1.5;
+      color: #29377e;
+    }
+    .recipient-name {
+      font-size: 2em;
+      font-weight: bold;
+      margin: 20px 0;
+      color: #29377e;
+    }
+    .signature {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-top: 40px;
+    }
+    .signature p {
+      padding: 0px;
+      margin: 0px;
+      text-align: center;
+    }
+    .signature img {
+      height: 60px;
+      justify-content: center;
+    }
+    .rektor-info {
+      text-align: right;
+      font-size: 0.9em;
+    }
+    #rektor-nip {
+      margin-top: 0px;
+      padding-top: 0px;
+    }
+    #download-btn {
+      margin: 10px 5px;
+      padding: 10px 20px;
+      background-color: #2e3b55;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    #download-btn:hover {
+      background-color: #40567a;
+    }
+    #qr-code {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="form-sertifikat">
+    <label for="recipient-input">Nama Lengkap:</label>
+    <input type="text" id="recipient-input" placeholder="Masukkan nama lengkap">
+    <button id="download-btn">Generate Sertifikat</button>
+  </div>
+  <div class="certificate-container" id="certificate">
+    <h1>SERTIFIKAT</h1>
+    <h3 class="certificate-number">No. 5626/UN28/KB.12.03/2024</h3>
+    <p>Diberikan kepada:</p>
+    <div class="recipient-name" id="recipient-name">[Nama Lengkap]</div>
+    <p>sebagai</p>
+    <h2>Peserta</h2>
+    <p>
+      Kegiatan <span id="activity-name">Penyambutan Duta Kampus Merdeka Universitas Tadulako (DKM UNTAD) Periode Tahun 2025</span> yang dilaksanakan oleh 
+      <span id="organizer">DKM UNTAD</span> pada tanggal 
+      <span id="activity-date">3 Januari 2024</span> secara online melalui 
+      <span id="activity-location">zoom meeting<span>.
+    </p>
+    <div class="signature">
+      <div class="rektor-info">
+        <p id="issued-date">Palu, 31 Desember 2024</p>
+        <p><strong>Rektor,</strong></p>
+        <img src="ttd rektor.png" alt="Signature">
+        <p><strong>Prof. Dr. Ir. Amar, S.T., M.T.</strong></p>
+        <p id="rektor-nip">NIP.196807141994031006</p>
+      </div>
+    </div>
+    <canvas id="qr-code"></canvas>
+  </div>
+  
+
+  <script>
+    const downloadBtn = document.getElementById('download-btn');
+    const certificate = document.getElementById('certificate');
+    const recipientInput = document.getElementById('recipient-input');
+    const recipientName = document.getElementById('recipient-name');
+    const qrCodeCanvas = document.getElementById('qr-code');
+
+    recipientInput.addEventListener('input', () => {
+      recipientName.textContent = recipientInput.value || '[Nama Lengkap]';
+    });
+
+    downloadBtn.addEventListener('click', () => {
+      const qrContent = `Sertifikat diberikan kepada: ${recipientName.textContent}`;
+      QRCode.toCanvas(qrCodeCanvas, qrContent, { width: 100 }, (error) => {
+        if (error) {
+          console.error('QR Code generation failed:', error);
+          return;
+        }
+        // Append QR Code to certificate
+        const qrCodeImage = qrCodeCanvas.toDataURL();
+        const qrImg = document.createElement('img');
+        qrImg.src = qrCodeImage;
+        qrImg.style.position = 'absolute';
+        qrImg.style.bottom = '30px';
+        qrImg.style.left = '30px';
+        qrImg.style.width = '80px';
+        certificate.appendChild(qrImg);
+
+        // Generate PDF
+        html2canvas(certificate).then(canvas => {
+          const imgData = canvas.toDataURL('image/png');
+          const pdf = new jspdf.jsPDF('landscape', 'mm', [210, 297]);
+          pdf.addImage(imgData, 'PNG', 0, 0, 297, 210);
+          pdf.save('certificate.pdf');
+
+          // Remove QR code after generating certificate
+          certificate.removeChild(qrImg);
+        });
+      });
+    });
+  </script>
+</body>
+</html>
