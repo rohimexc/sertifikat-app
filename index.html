@@ -6,32 +6,34 @@
   <title>Certificate Generator</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.0/qrcode.min.js"></script>
   <style>
+    /* CSS sama seperti sebelumnya */
     body {
       font-family: 'Arial', sans-serif;
-      margin: 0;
-      padding: 0;
       background-color: #f8f8f8;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       min-height: 100vh;
+      margin: 0;
     }
-    .form-sertifikat{
-        margin: 10px 20px;
+    .form-sertifikat {
+      margin: 20px;
     }
-    .form-sertifikat input{
-      width: 400px;
-      height:30px;
-  }
+    .form-sertifikat input {
+      width: 300px;
+      padding: 10px;
+      margin-right: 10px;
+    }
     .certificate-container {
       width: 900px;
       height: 600px;
-      padding: 5px;
+      padding: 20px;
       border: 5px solid #fcb14a;
       background: url('bg.png') no-repeat center;
+      background-size: cover;
       box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
       position: relative;
       text-align: center;
@@ -39,18 +41,18 @@
     .certificate-container h1 {
       font-size: 2.5em;
       color: #29377e;
-      margin: 20px 0px 0px;
+      margin: 20px 0 0;
     }
     .certificate-container h2 {
       font-size: 1.5em;
       color: #29377e;
-      margin: 10px 0 20px;
+      margin: 10px 0;
     }
     .certificate-container h3 {
-        font-size: 1em;
-        color: #29377e;
-        margin: 0px;
-      }
+      font-size: 1em;
+      color: #29377e;
+      margin: 0px;
+    }
     .certificate-container p {
       font-size: 1.1em;
       line-height: 1.5;
@@ -67,6 +69,11 @@
       justify-content: center;
       align-items: center;
       margin-top: 40px;
+      
+    }
+    .signature img {
+      height: 70px;
+      justify-content: center;
     }
     .signature p {
       padding: 0px;
@@ -86,10 +93,9 @@
       padding-top: 0px;
     }
     #download-btn {
-      margin: 10px 5px;
       padding: 10px 20px;
       background-color: #2e3b55;
-      color: #fff;
+      color: white;
       border: none;
       border-radius: 5px;
       cursor: pointer;
@@ -97,29 +103,25 @@
     #download-btn:hover {
       background-color: #40567a;
     }
-    #qr-code {
-      display: none;
-    }
   </style>
 </head>
 <body>
   <div class="form-sertifikat">
-    <label for="recipient-input">Nama Lengkap:</label>
-    <input type="text" id="recipient-input" placeholder="Masukkan nama lengkap">
+    <input type="text" id="recipient-input" placeholder="Masukkan NIM Kapital Tanpa Spasi">
     <button id="download-btn">Generate Sertifikat</button>
   </div>
+
   <div class="certificate-container" id="certificate">
     <h1>SERTIFIKAT</h1>
     <h3 class="certificate-number">No. 0032/UN28/PP.01.00/2025</h3>
     <p>Diberikan kepada:</p>
     <div class="recipient-name" id="recipient-name">[Nama Lengkap]</div>
     <p>sebagai</p>
-    <h2>Panitia</h2>
+    <h2 id="jabatan">[Jabatan]</h2>
     <p>
-      Kegiatan <span id="activity-name">Penyambutan Duta Kampus Merdeka Universitas Tadulako (DKM UNTAD) Periode Tahun 2025</span> yang dilaksanakan oleh 
+      Kegiatan <span id="activity-name">Penyambutan Duta Kampus Merdeka Universitas Tadulako (DKM UNTAD) Periode 2025</span> yang dilaksanakan oleh 
       <span id="organizer">DKM UNTAD</span> pada tanggal 
-      <span id="activity-date">4 Januari 2025</span> secara online melalui 
-      <span id="activity-location">zoom meeting<span>.
+      <span id="activity-date">04 Januari 2024</span> secara online melalui virtual zoom meeting.
     </p>
     <div class="signature">
       <div class="rektor-info">
@@ -130,29 +132,63 @@
         <p id="rektor-nip">NIP.196807141994031006</p>
       </div>
     </div>
-    <canvas id="qr-code"></canvas>
+    <canvas id="qr-code" style="display: none;"></canvas>
   </div>
-  
 
   <script>
+    const spreadsheetId = '1Udrs1cG_FQpNvS1i6zkPeoZaVFhUBx6F6fSstFnQlRc';
+    const apiKey = 'AIzaSyDRZLtl5T800fPBH1-OIKpElBPDgc6bIoU';
+    const range = 'Sheet1!A:C';
+
+    async function fetchSpreadsheetData() {
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?key=${apiKey}`;
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+        return data.values;
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        return null;
+      }
+    }
+
+    async function getDataById(id) {
+      const data = await fetchSpreadsheetData();
+      if (!data) return null;
+      const record = data.find(row => row[0] === id);
+      return record ? { nama: record[1], jabatan: record[2] } : null;
+    }
+
     const downloadBtn = document.getElementById('download-btn');
-    const certificate = document.getElementById('certificate');
     const recipientInput = document.getElementById('recipient-input');
     const recipientName = document.getElementById('recipient-name');
+    const jabatanElement = document.getElementById('jabatan');
     const qrCodeCanvas = document.getElementById('qr-code');
+    const certificate = document.getElementById('certificate');
 
-    recipientInput.addEventListener('input', () => {
-      recipientName.textContent = recipientInput.value || '[Nama Lengkap]';
-    });
+    downloadBtn.addEventListener('click', async () => {
+      const id = recipientInput.value.trim();
+      if (!id) {
+        alert('Silakan masukkan ID.');
+        return;
+      }
 
-    downloadBtn.addEventListener('click', () => {
+      const result = await getDataById(id);
+      if (result) {
+        recipientName.textContent = result.nama || '[Nama Lengkap]';
+        jabatanElement.textContent = result.jabatan || '[Jabatan]';
+      } else {
+        alert('Data tidak ditemukan.');
+        return;
+      }
+
       const qrContent = `Sertifikat diberikan kepada: ${recipientName.textContent}`;
       QRCode.toCanvas(qrCodeCanvas, qrContent, { width: 100 }, (error) => {
         if (error) {
           console.error('QR Code generation failed:', error);
           return;
         }
-        // Append QR Code to certificate
+
         const qrCodeImage = qrCodeCanvas.toDataURL();
         const qrImg = document.createElement('img');
         qrImg.src = qrCodeImage;
@@ -162,14 +198,12 @@
         qrImg.style.width = '80px';
         certificate.appendChild(qrImg);
 
-        // Generate PDF
         html2canvas(certificate).then(canvas => {
           const imgData = canvas.toDataURL('image/png');
           const pdf = new jspdf.jsPDF('landscape', 'mm', [210, 297]);
           pdf.addImage(imgData, 'PNG', 0, 0, 297, 210);
-          pdf.save('certificate.pdf');
+          pdf.save('Sertifikat Panitia.pdf');
 
-          // Remove QR code after generating certificate
           certificate.removeChild(qrImg);
         });
       });
